@@ -1,0 +1,40 @@
+name: Auto Update Freshway Dashboard
+
+on:
+  schedule:
+    # 매일 아침 08:00 (한국시간 기준 / UTC 23:00) 자동 실행
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 언제든 버튼 눌러서 즉시 수동 실행 가능
+
+permissions:
+  contents: write
+
+jobs:
+  build-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. 저장소 파일 불러오기
+        uses: actions/checkout@v4
+
+      - name: 2. 파이썬 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 3. 필수 수집 패키지 설치
+        run: pip install yfinance requests feedparser google-generativeai
+
+      - name: 4. 실시간 시세 및 뉴스 수집 실행
+        env:
+          ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
+          KAMIS_CERT_ID: ${{ secrets.KAMIS_CERT_ID }}
+          KAMIS_CERT_KEY: ${{ secrets.KAMIS_CERT_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python update_dashboard_data.py
+
+      - name: 5. 최신 데이터(dashboard_live_data.json) 저장소에 자동 반영
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add dashboard_live_data.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update live dashboard data" && git push)
