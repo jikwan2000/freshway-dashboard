@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CJ프레시웨이 식자재유통 시세·이슈 대시보드</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-hover: #263449;
+    --border: #334155;
+    --text: #f1f5f9;
+    --text-sub: #cbd5e1;
+    --text-muted: #94a3b8;
+    --up: #f87171; /* 상승 */
+    --down: #60a5fa; /* 하락 */
+    --accent: #f97316;
+    --macro-accent: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); padding: 22px 26px; line-height: 1.55; font-size: 15px; font-weight: 400; }
+  
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: center; background: var(--panel); padding: 16px 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 14px; flex-wrap: wrap; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-badge { background: #ea580c; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 14px; color: #fff; letter-spacing: 0.2px; }
+  .brand h1 { font-size: 20px; font-weight: 600; color: #f8fafc; letter-spacing: -0.3px; }
+  .brand-sub { font-size: 13.5px; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn { background: #263449; color: #e2e8f0; border: 1px solid #475569; padding: 8px 15px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 500; transition: 0.15s; }
+  .btn:hover { background: #334155; }
+  .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn-api { background: #1e293b; border-color: #475569; color: #cbd5e1; }
+  .btn-api:hover { background: #334155; color: #fff; }
+
+  /* Summary Bar */
+  .risk-bar { display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.85); border: 1px solid var(--border); border-left: 4px solid #ef4444; padding: 12px 20px; border-radius: 10px; margin-bottom: 18px; font-size: 14.5px; color: var(--text-sub); flex-wrap: wrap; gap: 12px; }
+  .risk-highlight { color: #f8fafc; font-weight: 600; }
+
+  /* Top Macro Section (외식업 거시 동향 4종) */
+  .macro-section { background: linear-gradient(180deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.92) 100%); border: 1px solid #3b4f73; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; }
+  .macro-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .macro-title { font-size: 16.5px; font-weight: 600; color: #e0f2fe; display: flex; align-items: center; gap: 8px; }
+  .macro-tag { background: rgba(56, 189, 248, 0.15); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.35); padding: 2px 9px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+  .grid-macro-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 1440px) { .grid-macro-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 760px) { .grid-macro-4 { grid-template-columns: 1fr; } }
+
+  /* Main Layout */
+  .layout { display: grid; grid-template-columns: 56% 42.5%; gap: 1.5%; align-items: start; }
+  @media (max-width: 1280px) { .layout { grid-template-columns: 100%; gap: 24px; } }
+
+  .section-title { font-size: 16.5px; font-weight: 600; margin: 6px 0 12px; display: flex; justify-content: space-between; align-items: center; color: #f1f5f9; flex-wrap: wrap; gap: 8px; }
+  .section-sub { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+  
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 26px; }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Item Card */
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: 0.18s; display: flex; flex-direction: column; justify-content: space-between; }
+  .card:hover { background: var(--panel-hover); border-color: #64748b; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.28); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .item-name { font-size: 17px; font-weight: 600; color: #f8fafc; }
+  .item-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; font-weight: 400; }
+  
+  .badge { padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .b-high { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.35); }
+  .b-mid { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.35); }
+  .b-low { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.35); }
+  .b-macro { background: rgba(56,189,248,0.15); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.35); }
+
+  .price-row { display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0; }
+  .price-main { font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px; }
+  .price-link { font-size: 12.5px; color: var(--text-muted); font-weight: 400; }
+  .card:hover .price-link { color: #f97316; }
+
+  .auto-stat-bar { font-size: 12.5px; color: var(--text-sub); background: rgba(15, 23, 42, 0.55); padding: 7px 10px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); }
+  .stat-val { color: #f8fafc; font-weight: 500; }
+
+  /* 5-Period Strip */
+  .period-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #0f172a; padding: 8px 5px; border-radius: 8px; margin: 6px 0 10px; text-align: center; border: 1px solid #263449; }
+  .p-cell { display: flex; flex-direction: column; gap: 2px; }
+  .p-lbl { color: var(--text-muted); font-size: 11.5px; font-weight: 400; }
+  .p-val { font-weight: 600; font-size: 13px; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+
+  /* SVG Chart */
+  .svg-wrap { width: 100%; height: 130px; margin: 4px 0 8px; background: rgba(15, 23, 42, 0.55); border-radius: 8px; padding: 6px; border: 1px solid rgba(255,255,255,0.05); }
+
+  /* Under-chart News */
+  .card-news-box { margin-top: 8px; padding-top: 10px; border-top: 1px solid #263449; display: flex; flex-direction: column; gap: 6px; }
+  .card-news-header { font-size: 12px; font-weight: 500; color: var(--text-muted); display: flex; justify-content: space-between; margin-bottom: 2px; }
+  .card-news-item { font-size: 13px; color: var(--text-sub); font-weight: 400; display: flex; align-items: flex-start; gap: 6px; line-height: 1.45; }
+  .dot { font-size: 10px; margin-top: 3px; flex-shrink: 0; }
+
+  /* Right Side: News Panel */
+  .news-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: sticky; top: 18px; }
+  .news-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); justify-content: space-between; align-items: center; }
+  .news-sub-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 5px 12px; border-radius: 99px; font-size: 13px; font-weight: 400; background: #0f172a; color: var(--text-muted); border: 1px solid #334155; cursor: pointer; transition: 0.15s; }
+  .chip:hover { color: #e2e8f0; }
+  .chip.active { background: #ea580c; color: #fff; border-color: #ea580c; font-weight: 500; }
+  
+  .news-scroll { max-height: 1080px; overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 12px; }
+  .news-card { padding: 16px 18px; border-radius: 10px; background: #0f172a; border: 1px solid #263449; transition: 0.15s; }
+  .news-card:hover { border-color: #475569; }
+  .news-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+  .news-date-badge { color: var(--text-muted); font-size: 12.5px; font-weight: 400; }
+  .news-cat-badge { background: rgba(255, 255, 255, 0.06); color: var(--text-sub); padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: 400; }
+  .news-biz-badge { background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: 500; }
+  .news-title { font-size: 16px; font-weight: 600; margin: 4px 0 8px; color: #f8fafc; line-height: 1.45; }
+  .news-summary { font-size: 14px; color: var(--text-sub); font-weight: 400; margin-bottom: 10px; line-height: 1.55; }
+  .news-impact-box { background: rgba(249, 115, 22, 0.07); border-left: 3px solid var(--accent); padding: 9px 12px; border-radius: 4px; font-size: 13.5px; color: #e2e8f0; font-weight: 400; line-height: 1.5; }
+  .impact-label { color: #fdba74; font-weight: 600; margin-right: 4px; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 18px; }
+  .modal { background: var(--panel); border: 1px solid #475569; border-radius: 14px; max-width: 900px; width: 100%; padding: 26px; max-height: 92vh; overflow-y: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 16px; }
+  .close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; }
+  .info-box { background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 14px; font-size: 14.5px; line-height: 1.6; color: var(--text-sub); }
+  .input-field { width: 100%; padding: 10px 12px; background: #0f172a; border: 1px solid #475569; border-radius: 8px; color: #fff; font-size: 14px; margin-top: 6px; margin-bottom: 12px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: 13px; font-weight: 500; background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">
+    <span class="brand-badge">CJ FRESHWAY</span>
+    <div>
+      <h1>식자재유통 시세·이슈 대시보드</h1>
+      <div class="brand-sub">외식직거래 (오프라인·온라인) 및 유통도매 원가·수요 모니터링</div>
+    </div>
+  </div>
+  <div class="controls">
+    <span class="status-pill" id="sync-status-pill">🟢 자동 연동 완료</span>
+    <button class="btn active" onclick="runLiveAutoSync()">실시간 동기화</button>
+    <button class="btn btn-api" onclick="openApiConfigModal()">데이터 연동 설정</button>
+  </div>
+</div>
+
+<!-- 상단 요약 바 -->
+<div class="risk-bar" id="dynamic-risk-bar"></div>
+
+<!-- 최상단: 외식업 거시 동향 4대 핵심 지표 (경기동향 · 심리지수 · 소비 활동성 · 식자재 발주 활성화) -->
+<div class="macro-section">
+  <div class="macro-header">
+    <div class="macro-title">
+      <span>외식업 거시 동향 및 식자재 발주 수요 지표 (4대 핵심 지수)</span>
+      <span class="macro-tag">한국은행 ECOS · 오픈 데이터 자동 연동</span>
+    </div>
+    <span class="section-sub">거시 경기(경기동향·경제심리)와 미시 외식 활동성(소비 검색·식자재 발주)의 52주 추세를 통합 모니터링합니다</span>
+  </div>
+  <div class="grid-macro-4" id="macro-grid"></div>
+</div>
+
+<div class="layout">
+  <!-- 좌측: 시세 모니터링 -->
+  <div>
+    <div class="section-title">
+      <span>글로벌 가공 원자재 및 환율</span>
+      <span class="section-sub">항목 클릭 시 52주 상세 추이 및 대응 가이드 확인</span>
+    </div>
+    <div class="grid-2" id="raw-grid"></div>
+
+    <div class="section-title">
+      <span>주요 1차 상품 도매 시세</span>
+      <div style="display:flex; gap:6px;">
+        <button class="btn active" id="tab-all" onclick="filterCat('all')">전체</button>
+        <button class="btn" id="tab-agri" onclick="filterCat('농산')">농산</button>
+        <button class="btn" id="tab-meat" onclick="filterCat('축산')">축산</button>
+        <button class="btn" id="tab-sea" onclick="filterCat('수산')">수산</button>
+      </div>
+    </div>
+    <div class="grid-2" id="fresh-grid"></div>
+  </div>
+
+  <!-- 우측: 뉴스 패널 -->
+  <div class="news-panel">
+    <div class="section-title" style="margin-top:0; margin-bottom:10px;">
+      <span>주요 식자재 뉴스 및 영향도</span>
+      <span style="font-size:13px; color:var(--text-muted); font-weight:400;" id="news-count-label">최근 3일</span>
+    </div>
+
+    <div class="news-filter-bar">
+      <div class="news-sub-tabs" id="day-tabs">
+        <span class="chip active" onclick="setNewsFilter('day', 'ALL', this)">최근 3일</span>
+        <span class="chip" onclick="setNewsFilter('day', 'D0', this)">오늘</span>
+        <span class="chip" onclick="setNewsFilter('day', 'D1', this)">1일 전</span>
+        <span class="chip" onclick="setNewsFilter('day', 'D2', this)">2일 전</span>
+      </div>
+      <div class="news-sub-tabs" id="level-tabs">
+        <span class="chip active" onclick="setNewsFilter('level', 'ALL', this)">영향도 전체</span>
+        <span class="chip" onclick="setNewsFilter('level', '상', this)">상</span>
+        <span class="chip" onclick="setNewsFilter('level', '중', this)">중</span>
+        <span class="chip" onclick="setNewsFilter('level', '하', this)">하</span>
+      </div>
+    </div>
+
+    <div class="news-sub-tabs" style="margin-bottom:8px;" id="channel-tabs">
+      <span class="chip active" onclick="setNewsFilter('channel', 'ALL', this)">전체 채널</span>
+      <span class="chip" onclick="setNewsFilter('channel', '외식오프', this)">외식직거래 (오프라인)</span>
+      <span class="chip" onclick="setNewsFilter('channel', '외식온라인', this)">외식직거래 (온라인)</span>
+      <span class="chip" onclick="setNewsFilter('channel', '유통도매', this)">유통도매</span>
+    </div>
+
+    <div class="news-sub-tabs" style="margin-bottom:14px;" id="scope-tabs">
+      <span class="chip active" onclick="setNewsFilter('scope', 'ALL', this)">전체 분야</span>
+      <span class="chip" onclick="setNewsFilter('scope', '산지/도매시세', this)">산지·도매시세</span>
+      <span class="chip" onclick="setNewsFilter('scope', '정책/할당관세', this)">할당관세·통관</span>
+      <span class="chip" onclick="setNewsFilter('scope', '환율/제조사판가', this)">환율·제조사판가</span>
+      <span class="chip" onclick="setNewsFilter('scope', '외식/온라인트렌드', this)">외식·온라인트렌드</span>
+    </div>
+
+    <div class="news-scroll" id="news-list"></div>
+  </div>
+</div>
+
+<!-- 모달 -->
+<div class="modal-bg" id="detailModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// [최상단 거시 지표 4종] 1.경기동향지수 2.심리지수(NSI) 3.소비 활동성 지수 4.식자재 발주 소싱 활성화 지수
+const macroItems = [
+  {
+    id: 'macro_biz_cycle',
+    name: '경기동향 지수 (외식·내수 체감)',
+    cat: '거시',
+    isMacro: true,
+    unit: '기준치=100 · 한국은행 ECOS / KOSIS 연동',
+    cur: 98.4,
+    chg: { w1: +0.2, m1: +0.8, m3: -0.6, m6: -1.2, y1: -1.5 },
+    series: [99.9, 99.6, 99.2, 99.5, 99.8, 99.6, 99.6, 99.2, 99.0, 99.0, 97.6, 98.4],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '서비스업(숙박·음식점업) 및 내수 경기 흐름을 나타내는 지표로, 외식 가맹점 휴·폐업률 및 중장기 식자재 물량 추세의 기준점 역할',
+    action: '[유통도매] 경기동향 100 하회 구간에서는 대리점 여신(미수금) 리스크 점검 병행 | [외식직거래] 가성비 식자재 및 원가 절감형 대체 스펙 제안으로 기존 거래처 이탈 방어',
+    itemNews: [
+      { lv: 'mid', title: '내수 서비스업 경기동향 전월 대비 +0.8% 소폭 반등했으나 기준선(100) 하회 지속', impact: '[유통도매] 외식 자영업 체감경기 회복 지연에 따른 대리점 채권/여신 관리 유의' },
+      { lv: 'low', title: '가을 행락철 및 연말 모임 수요 유입으로 음식점업 단기 체감지수는 개선 흐름', impact: '[외식직거래 오프] 오피스·번화가 대형 식당 중심 연말 물량 사전 계약 추진' }
+    ]
+  },
+  {
+    id: 'macro_sentiment',
+    name: '경제·소비 심리 지수 (뉴스심리 NSI)',
+    cat: '거시',
+    isMacro: true,
+    unit: '장기평균=100 · 한국은행 ECOS 주간/일간 API',
+    cur: 103.8,
+    chg: { w1: +1.4, m1: +3.2, m3: +2.1, m6: +4.5, y1: +3.9 },
+    series: [99.9, 98.5, 97.2, 96.8, 98.4, 99.1, 99.3, 100.5, 101.2, 101.7, 100.6, 103.8],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '한국은행이 일별 경제 뉴스를 텍스트 마이닝해 주간 단위로 공표하는 속보성 심리지수(NSI)로, 공식 소비자심리지수(CCSI)보다 2~4주 앞서 외식 소비 심리를 포착함',
+    action: '[외식직거래 오프] 심리지수 100 상회(낙관) 시 직장인 회식 및 가족 외식 지출 증가 → 구이용 육류·주류 안주류 발주 확대 대비 | [외식온라인] 객단가 높은 프리미엄 식자재 기획전 편성',
+    itemNews: [
+      { lv: 'low', title: '한국은행 뉴스심리지수(NSI) 103.8 기록… 기준치(100) 상회하며 소비 심리 완만한 회복세', impact: '[외식직거래 오프] 연말 외식 소비 심리 개선에 맞춰 구이·주점 경로 판촉 강화' },
+      { lv: 'mid', title: '환율 연저점(1,323원) 안정 보도가 수입물가 불안 심리를 완화하는 데 기여', impact: '[유통도매] 수입 수산물·수입육 도매 유통 심리 안정화' }
+    ]
+  },
+  {
+    id: 'macro_dining_search',
+    name: '소비 활동성 지수 (외식·회식 트렌드)',
+    cat: '거시',
+    isMacro: true,
+    unit: '일별 상대지수 (52주 최고=100 · 한국은행 ECOS)',
+    cur: 84.5,
+    chg: { w1: +4.2, m1: +6.8, m3: +3.5, m6: +8.1, y1: +2.4 },
+    series: [82.5, 88.0, 74.0, 71.5, 76.0, 79.5, 78.2, 81.0, 77.5, 81.6, 79.1, 84.5],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '소비자의 식당 예약·맛집·회식 키워드 일별 트래픽 지수로, 실제 외식 매장 카드결제액 및 주말 식자재 소비량에 3~7일 선행함',
+    action: '[외식직거래 오프] 지수 80pt 이상 상승 구간 진입 시 고기집·주점·중식당 주말 추가 발주량 증가 대비 | [유통도매] 외식 상권 회전율 개선에 맞춘 육류·유지류 도매 물량 배정 확대',
+    itemNews: [
+      { lv: 'low', title: '가을 행락철 및 모임 시즌 진입으로 외식·회식 검색 트래픽 1개월 대비 +6.8% 상승', impact: '[외식직거래 오프] 오프라인 중대형 식당 및 주점 테이블 회전율 개선 신호' },
+      { lv: 'low', title: '기온 하강과 함께 국물요리(전골·짬뽕·칼국수) 외식 검색 비중 빠르게 상승', impact: '[외식직거래 온라인] 동절기 국물 메뉴용 육수·면류·양념채소 기획전 전면 배치' }
+    ]
+  },
+  {
+    id: 'macro_b2b_order',
+    name: '식자재 발주 소싱 활성화 지수',
+    cat: '거시',
+    isMacro: true,
+    unit: '일별 상대지수 (52주 최고=100 · 한국은행 ECOS)',
+    cur: 91.2,
+    chg: { w1: +2.1, m1: +8.4, m3: +11.2, m6: +14.8, y1: +16.5 },
+    series: [78.3, 79.0, 76.5, 75.0, 77.8, 80.2, 79.4, 82.0, 83.5, 82.0, 84.1, 91.2],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '식당 점주들의 업소용 식자재·식자재몰·도매 단가 비교 검색량 추이로, 온라인몰 신규 유입 및 도매 선매입 수요를 실시간 반영함',
+    action: '[외식직거래 온라인] 발주 활성화 지수 연중 최고치(91.2pt) 구간에서 식용유·계란·세절육 타임특가로 타사 이탈 자영업자 흡수 | [유통도매] 원가 민감도 상승에 따른 대리점 단가 경쟁력 점검',
+    itemNews: [
+      { lv: 'high', title: '식당 자영업자의 온라인 식자재 단가 비교 및 도매 발주 검색량 1년 전 대비 +16.5% 증가', impact: '[외식직거래 온라인] 오프라인 사입에서 온라인 발주로 전환하는 신규 식당 회원 유치 최적기' },
+      { lv: 'mid', title: '식용유·설탕 등 가공 원자재 강세 보도에 자영업자 선매입 검색 트래픽 1개월 +8.4% 상승', impact: '[유통도매] 도매 대리점향 대용량 지대·캔류 회전율 상승 대비 안전재고 확충' }
+    ]
+  }
+];
+
+const rawItems = [
+  {
+    id: 'sugar', symbol: 'SB=F', name: '원당 (설탕 원료)', cat: '가공',
+    unit: 'US¢/lb · ICE 선물 (SB=F)', cur: 20.26,
+    chg: { w1: +0.6, m1: +4.8, m3: +24.5, m6: +52.2, y1: +32.8 },
+    series: [15.25, 14.80, 14.30, 13.90, 13.55, 13.26, 13.31, 14.90, 16.28, 17.80, 19.33, 20.26],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '국제 원당 선물 및 환율 변동 후 약 3~4개월 시차를 두고 국내 제당사 유통도매 출고가에 반영',
+    action: '[유통도매] 3~6개월 선물 추세 상승 구간 진입 시 지대(15/20kg) 도매 물량 선확보 | [외식온·오프] 카페·베이커리 직거래처 시럽·설탕 단가 사전 고정 계약 권고',
+    itemNews: [
+      { lv: 'high', title: '국제 원당(SB=F) 52주 저점(13.26¢) 대비 +52.8% 반등하며 20¢ 안착', impact: '[유통도매] 원당 강세분이 시차를 두고 B2B 설탕 도매단가 인상 압력으로 작용' },
+      { lv: 'mid', title: '원/달러 환율 1,323원대 하향 안정이 원당 수입 통관원가 부담 일부 완충', impact: '[외식직거래 오프] 대형 베이커리·카페 직거래처 분기 단가 재계약 시 현 수준 동결 협상' },
+      { lv: 'mid', title: '온라인 식자재몰, 연말 디저트 시즌 앞두고 당류·시럽류 박스 단위 주문 증가', impact: '[외식직거래 온라인] 설탕+시럽+파우더 번들 기획전으로 객단가 확대' }
+    ]
+  },
+  {
+    id: 'wheat', symbol: 'ZW=F', name: '소맥 (밀가루 원료)', cat: '가공',
+    unit: 'US¢/bu · CBOT 선물 (ZW=F)', cur: 625.00,
+    chg: { w1: -4.6, m1: -9.0, m3: +8.5, m6: +25.5, y1: +31.3 },
+    series: [476.0, 498.0, 512.0, 530.0, 545.0, 520.0, 498.0, 560.0, 576.0, 775.75, 686.8, 625.0],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '원맥 해상 선적~도입~제분까지 4~6개월 시차 발생. 중식당·칼국수·분식집 주력인 밀가루 도매원가 선행지표',
+    action: '[유통도매] 6개월·1년 누적 상승률(+25~31%) 감안하여 대리점 마진 방어 | [외식온·오프] 중식·분식 직거래 식당 대상 밀가루+식용유 결합 프로모션 유지',
+    itemNews: [
+      { lv: 'high', title: 'CBOT 소맥 선물 625.0¢… 최근 1개월 -9.0% 조정에도 1년 전 대비 +31.3% 강세', impact: '[유통도매] 3분기 고점 원맥 도입 시차로 인해 국내 밀가루 도매단가 강보합 지속' },
+      { lv: 'mid', title: '원/달러 환율 하락 안정이 제분사 수입 원맥 환차손 부담 완화', impact: '[외식직거래 오프] 외식 고객사 추가 단가 인상 저항 완화, 현 단가 기준 장기 공급계약 유리' },
+      { lv: 'low', title: '동절기 칼국수·우동·분식 성수기 진입으로 업소용 밀가루 회전율 상승', impact: '[외식직거래 온라인] 면류·육수 베이스와 중력분 묶음 구성으로 동절기 발주 유도' }
+    ]
+  },
+  {
+    id: 'soyoil', symbol: 'ZL=F', name: '대두유 (식용유 원료)', cat: '가공',
+    unit: 'US¢/lb · CBOT 선물 (ZL=F)', cur: 66.74,
+    chg: { w1: -0.6, m1: +3.8, m3: +14.2, m6: +52.9, y1: +40.5 },
+    series: [47.51, 46.20, 44.80, 43.64, 48.50, 52.30, 43.64, 73.95, 79.69, 58.40, 64.30, 66.74],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '업소용 식용유(18L 캔)는 국제 대두유 시세 변동이 1~2개월 내 유통도매 대리점 및 온라인몰 시세에 가장 빠르게 직결됨',
+    action: '[유통도매] 6개월 대비 +52.9% 상승한 고원가 구간 지속에 맞춰 안전재고 확보 및 출고단가 관리 | [외식온라인] 18L 캔 수량한정 특가로 자영업자 트래픽 유입',
+    itemNews: [
+      { lv: 'high', title: 'CBOT 대두유 선물 66.74¢… 52주 저점(43.64¢) 대비 50% 이상 높은 고원가 구간 지속', impact: '[유통도매] 업소용 식용유 도매 원가 상승 압력 지속, 저가 덤핑 출고 지양 및 재고 마진 관리' },
+      { lv: 'high', title: '바이오디젤 수요 및 정제 마진 강세로 프랜차이즈 전용유 원가 부담 지속', impact: '[외식직거래 오프] 치킨·분식 직거래 매장에 전용유 분기 고정단가 계약 제안' },
+      { lv: 'mid', title: '온라인 식자재몰, 식용유 강세에 업소용 18L 가격비교 검색 및 주문 집중', impact: '[외식직거래 온라인] ID당 구매수량 제한 미끼특가 + 고마진 파우더·소스 교차판매 적용' }
+    ]
+  },
+  {
+    id: 'fx_krw', symbol: 'KRW=X', name: '원/달러 환율', cat: '가공',
+    unit: 'KRW/USD · 외환시장 (KRW=X)', cur: 1323.1,
+    chg: { w1: -0.4, m1: -2.7, m3: -4.5, m6: -3.8, y1: -0.2 },
+    series: [1325.8, 1340.0, 1355.0, 1375.0, 1395.0, 1410.0, 1375.0, 1385.0, 1370.0, 1360.0, 1359.5, 1323.1],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '수입 원자재(원당·소맥·대두유) 및 수입 수산·축산물의 국내 통관 원가를 결정하는 핵심 거시 변수',
+    action: '[유통도매] 환율 52주 저점(1,323원) 구간을 활용해 달러 결제 수입 수산물·수입육 오퍼 단가 협상 | [외식직거래] 고객사 단가 협상 시 환율 대신 국제 원자재(+30~40%) 상승분 근거 제시',
+    itemNews: [
+      { lv: 'low', title: '원/달러 환율 1,323.1원 마감… 52주 최저치 경신하며 수입 통관원가 부담 완화', impact: '[유통도매] 수입 식자재 달러 결제 시 환차익 발생 구간, 수입 오퍼 단가 협상력 개선' },
+      { lv: 'mid', title: '국제 원당·소맥·대두유 선물 급등 부담을 원화 강세(환율 하락)가 일부 상쇄', impact: '[외식직거래 오프] 환율 안정 효과로 수입 가공품의 급격한 추가 판가 인상 압력 완충' },
+      { lv: 'low', title: '환율 하락기에 수입 냉동새우·수입돈육 등 외화 결제 품목 선매입 여건 호전', impact: '[외식직거래 온라인] 수입 수산물·세절 수입육 기획전 마진율 개선' }
+    ]
+  }
+];
+
+const freshItems = [
+  {
+    id: 'onion', kamisCode: '245', name: '양파 (15kg 망 · 상품)', cat: '농산',
+    unit: '원/15kg · KAMIS 도매 (코드 245)', cur: 18387,
+    chg: { w1: -4.0, m1: +2.5, m3: +12.4, m6: -8.5, y1: +5.8 },
+    series: [17380, 18100, 19200, 20500, 21400, 20100, 20090, 16500, 15800, 16350, 17940, 18387],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '도매시장 경락가 변동 후 1~3일 내 유통도매 대리점 및 외식직거래 납품단가에 즉각 반영',
+    action: '[유통도매] 1주 전 대비 -4.0% 조정 구간에 맞춰 도매 매입단가 안정화 | [외식온·오프] 중식·한식 직거래처에 15kg 망양파 및 깐양파 안정 공급',
+    itemNews: [
+      { lv: 'low', title: '도매시장 양파 15kg 상품 경락가 18,387원… 1주 전보다 4.0% 하락 조정', impact: '[유통도매] 단기 급등세 진정으로 도매 대리점 매입 원가 부담 완화' },
+      { lv: 'mid', title: '양파 도매 시세 전년 동기 대비로는 +5.8%, 3개월 전 대비 +12.4% 높은 수준', impact: '[외식직거래 오프] 대량 소비 중식당 직거래처에는 중국산 수입양파 및 깐양파 병행 제안' },
+      { lv: 'low', title: '소형 식당 자영업자, 온라인몰 통한 깐양파 소분팩 정기 발주 지속', impact: '[외식직거래 온라인] 양파+대파+마늘 기본 양념채소 묶음 배송 프로모션 유지' }
+    ]
+  },
+  {
+    id: 'pork', kamisCode: '514', name: '돼지고기 (한돈 지육 · kg)', cat: '축산',
+    unit: '원/kg · KAMIS/축평원 도매 (코드 514)', cur: 5797,
+    chg: { w1: -3.2, m1: -5.8, m3: -8.4, m6: +1.5, y1: +2.1 },
+    series: [5678, 5580, 5320, 5180, 5420, 5690, 5710, 6350, 6480, 6328, 6154, 5797],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '지육 경락가 등락 시 1주일 내 육가공 부분육(삼겹/목심/전지) 도매 시세 및 고기집 직거래 단가 연동',
+    action: '[유통도매] 지육가 3개월 대비 -8.4% 하락분을 반영해 부분육 매입단가 인하 협상 | [외식온·오프] 연말 모임 시즌 앞두고 고기집 직거래처에 한돈 프로모션 전개',
+    itemNews: [
+      { lv: 'low', title: '한돈 지육 도매 경락가 kg당 5,797원… 전주 대비 -3.2% 내리며 2주 연속 하락', impact: '[유통도매] 국내산 돈육 부분육 도매 매입원가 하락으로 대리점 마진율 개선' },
+      { lv: 'mid', title: '원/달러 환율 하락 안정과 맞물려 수입 냉동삼겹 통관원가도 보합 안정세', impact: '[외식직거래 오프] 구이 전문점 직거래처 대상 연말 성수기 물량 사전 입도선매 영업 적기' },
+      { lv: 'low', title: '온라인 식자재몰, 찌개·제육용 전지 및 세절 대패삼겹 주문량 견조', impact: '[외식직거래 온라인] 지육가 하락 맞춘 삼겹·목심 주말 타임특가 편성' }
+    ]
+  },
+  {
+    id: 'egg', kamisCode: '516', name: '계란 (특란 30구)', cat: '축산',
+    unit: '원/30구 · KAMIS 산지/도매 (코드 516)', cur: 5180,
+    chg: { w1: -1.5, m1: -3.4, m3: -2.1, m6: -4.5, y1: -1.8 },
+    series: [5275, 5350, 5210, 5080, 5190, 5420, 5424, 5310, 5280, 5290, 5362, 5180],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '산지 도매가 변동 시 제과·베이커리·분식당 납품 단가 및 온라인몰 판란 시세에 즉시 연동',
+    action: '[유통도매] 산지 물량 여유(1개월 -3.4%)에 따른 도매 판촉 확대 | [외식온·오프] 연말 제과·베이커리 성수기 대비 신선란 및 액란 묶음 프로모션 추진',
+    itemNews: [
+      { lv: 'low', title: '산란계 계란 생산량 전년 동월비 +0.6% 증가… 특란 30구 도매시세 하향 안정', impact: '[유통도매] 산지 공급 여력 확대로 도매 대리점 계란 매입가 안정세 지속' },
+      { lv: 'low', title: '계란 시세 안정에 외식 분식·브런치·베이커리 매장 원가 부담 경감', impact: '[외식직거래 오프] 베이커리·카페 직거래처 대상 연말 케이크 시즌용 계란·유제품 결합 영업' },
+      { lv: 'mid', title: '동절기 철새 도래 시즌 진입에 따른 산란계 농장 예방적 방역 모니터링 지속', impact: '[외식직거래 온라인] 식당용 특란 30구 판란 및 구운란·계란지단 상시 특가전 유지' }
+    ]
+  },
+  {
+    id: 'cabbage', kamisCode: '211', name: '배추 (10kg 망 · 상품)', cat: '농산',
+    unit: '원/10kg · KAMIS 도매 (코드 211)', cur: 9800,
+    chg: { w1: -10.8, m1: -32.0, m3: -18.5, m6: -12.0, y1: -14.8 },
+    series: [11500, 10200, 9500, 9800, 10800, 11400, 11136, 10500, 18900, 12020, 14420, 9800],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '가을배추 출하 확대에 따른 도매가 하락(-32.0% MoM)이 직거래 식당 원물 및 업소용 김치 도매가에 반영',
+    action: '[유통도매] 배추 원물 시세 하락에 맞춰 도매 물량 회전율 극대화 | [외식온·오프] 국밥·칼국수·고기집 직거래처에 국내산 배추·김치 판촉 강화',
+    itemNews: [
+      { lv: 'low', title: '가을배추 본격 출하로 도매시장 배추 시세 1개월 전 대비 -32.0% 큰 폭 하락 안정', impact: '[외식직거래 오프] 국밥·칼국수 등 배추 다량 소비 직거래 식당의 원물 매입 부담 해소' },
+      { lv: 'low', title: '배추 원물가 안정으로 김장철 앞두고 업소용 김치 도매 수급 원활', impact: '[유통도매] 대리점 및 식자재마트 대상 배추·무·양념채소 김장 시즌 기획전 준비' },
+      { lv: 'low', title: '온라인 식자재몰, 식당용 10kg 김치 박스 및 겉절이용 신선 배추 주문 증가', impact: '[외식직거래 온라인] 배추 시세 인하 반영한 업소용 김치 다박스 할인 프로모션 전개' }
+    ]
+  },
+  {
+    id: 'squid', kamisCode: '619', name: '오징어 (원양/냉동 · 마리)', cat: '수산',
+    unit: '원/마리 · KAMIS 도매 (코드 619)', cur: 5392,
+    chg: { w1: -2.0, m1: +1.2, m3: +5.4, m6: +9.8, y1: +14.5 },
+    series: [4710, 4780, 4850, 4920, 4980, 4910, 4910, 5050, 5120, 5115, 5328, 5392],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '연근해 어획 부진으로 1년 대비 +14.5% 높은 구조적 강세이나, 최근 1주 시세는 -2.0% 소폭 조정',
+    action: '[유통도매] 원양산 할복오징어 및 남미산 오징어채 도매 재고 안정적 운용 | [외식온·오프] 중식당·분식·호프 직거래처에 원양산 및 갑오징어 슬라이스 제안',
+    itemNews: [
+      { lv: 'low', title: '원양 오징어 도매 기준 시세 5,392원… 1주 전 대비 -2.0% 소폭 하락 조정', impact: '[유통도매] 단기 호가 과열 진정, 원양산 냉동 오징어 박스 도매 단가 보합 유지' },
+      { lv: 'mid', title: '연근해 살오징어 어획량 부진으로 1년 전 대비 +14.5% 높은 가격대 지속', impact: '[외식직거래 오프] 중식·해물요리 직거래 매장에 포클랜드 원양산 및 페루산 자숙채 스펙 유지' },
+      { lv: 'low', title: '분식·맥주 전문점, 온라인몰서 조리 간편한 냉동 오징어튀김·버터구이 원팩 발주 지속', impact: '[외식직거래 온라인] 주점 안주 및 분식 튀김용 수산 가공품 묶음 할인 배치' }
+    ]
+  },
+  {
+    id: 'shrimp', kamisCode: '653', name: '흰다리새우 (도매 · kg)', cat: '수산',
+    unit: '원/kg · 수산시장/KAMIS 도매 (코드 653)', cur: 13250,
+    chg: { w1: +1.9, m1: +4.3, m3: +6.0, m6: +3.5, y1: +4.8 },
+    series: [12640, 12800, 12500, 12300, 12450, 12700, 12800, 12600, 12400, 12500, 12700, 13250],
+    dates: ['52주전','11개월','10개월','9개월','8개월','7개월','6개월전','5개월','4개월','3개월전','1개월전','현재'],
+    lagInfo: '가을 외식 수요로 도매 경락가는 강보합(+1.9% WoW)이나, 원/달러 환율 하락(1,323원)으로 수입 냉동박스 통관 여건은 개선',
+    action: '[유통도매] 환율 하락 구간에 베트남·에콰도르산 냉동 흰다리새우 박스 물량 매입 단가 협상 | [외식온·오프] 연말 모임 메뉴용 탈각새우·새우튀김 판촉',
+    itemNews: [
+      { lv: 'mid', title: '수산 도매시장 흰다리새우 kg당 13,250원(1주 +1.9%)… 가을 외식 수요 견조', impact: '[외식직거래 오프] 해물·중식·양식 직거래처에 가격 안정적인 수입 냉동 흰다리새우 제안' },
+      { lv: 'low', title: '원/달러 환율 1,323.1원 하락으로 베트남·에콰도르산 냉동새우 수입 원가 부담 완화', impact: '[유통도매] 환율 하락분 반영하여 연말 성수기용 수입 냉동새우 박스 물량 선점 유리' },
+      { lv: 'low', title: '온라인 식자재몰, 이자카야·포차용 노바시새우 및 탈각 칵테일새우 발주 꾸준', impact: '[외식직거래 온라인] 규격별(31/40, 41/50) 냉동 탈각새우 다팩 구매 할인 프로모션 운영' }
+    ]
+  }
+];
+
+const broadNewsData = [
+  {
+    day: 'D0', dateStr: '오늘', level: '상', channel: '유통도매', scope: '환율/제조사판가',
+    channelLabel: '유통도매 · 외식직거래(오프)',
+    tag: '#원당선물 #설탕원료 #1년+32.8%',
+    title: '국제 원당(SB=F) 1년 새 +32.8% 급등… 52주 저점(13.26¢) 대비 +52.8% 반등한 20.26¢ 강세',
+    summary: '상반기 브라질 풍작으로 4월 13.26센트까지 내려갔던 국제 원당 선물이 하반기 기후 악화와 공급 우려로 10월 중순 21.29¢를 찍은 뒤 20.26센트 선에서 거래되고 있습니다.',
+    impact: '[유통도매] 하반기 원당 급등분이 3~4개월 시차를 두고 연말·내년 초 B2B 설탕 도매 출고가 인상 압력으로 작용하므로 선매입 유효 | [외식오프] 베이커리·카페 직거래처 시럽·당류 단가 사전 고정 계약 추진'
+  },
+  {
+    day: 'D0', dateStr: '오늘', level: '상', channel: '유통도매', scope: '환율/제조사판가',
+    channelLabel: '유통도매 · 외식온라인',
+    tag: '#대두유선물 #식용유원료 #1년+40.5%',
+    title: 'CBOT 대두유(ZL=F) 파운드당 66.74¢… 52주 최저점(43.64¢) 대비 52.9% 높은 고원가 지속',
+    summary: '국제 대두유 선물 시세가 52주 저점 대비 큰 폭으로 오른 66.74센트 선에서 강세를 유지하며 국내 업소용 식용유 유통 원가를 자극하고 있습니다.',
+    impact: '[유통도매] 업소용 대두유(18L 캔) 도매 매입원가 강세 지속에 맞춰 저가 출고 자제 및 마진 관리 | [외식온라인] 가격 민감도 1위인 18L 식용유 수량한정 특가로 신규 식당 회원 유입 유도'
+  },
+  {
+    day: 'D0', dateStr: '오늘', level: '중', channel: '유통도매', scope: '환율/제조사판가',
+    channelLabel: '유통도매 · 외식직거래(오프)',
+    tag: '#원달러1323.1원 #연저점경신 #통관원가완충',
+    title: '원/달러 환율 1,323.1원 마감… 52주 최저치 경신하며 수입 식자재 결제 부담 완화',
+    summary: '한국은행 금통위의 금리 동결 기조와 월말 수출업체 네고 물량 출회로 원/달러 환율이 1,323.1원까지 내려오며 52주 최저점을 기록했습니다.',
+    impact: '[유통도매] 국제 원당·소맥·대두유 선물 급등 부담을 원화 강세(환율 하락)가 일부 완충해주는 구간으로, 달러 결제 수입 수산·축산물 오퍼 단가 협상에 유리'
+  },
+  {
+    day: 'D1', dateStr: '1일 전', level: '중', channel: '외식오프', scope: '환율/제조사판가',
+    channelLabel: '외식직거래(오프) · 유통도매',
+    tag: '#소맥625센트 #1년+31.3% #밀가루원료',
+    title: 'CBOT 소맥(ZW=F) 부셸당 625.0¢ 거래… 최근 1개월 -9.0% 조정에도 1년 전 대비 +31.3% 상승',
+    summary: '국제 밀 선물이 9월 고점(775.75¢) 대비로는 조정을 받았으나, 52주 저점(498.0¢) 대비 크게 오른 625센트 선을 형성하며 전년 대비 31.3% 높은 수준을 유지하고 있습니다.',
+    impact: '[유통도매] 3분기 고가 원맥 도입 시차(4~6개월)로 인해 연말 중력분(20kg) 도매단가 인하 여력 제한적 | [외식오프] 동절기 면류(칼국수·우동) 성수기 맞춘 밀가루+식용유 결합 프로모션 전개'
+  },
+  {
+    day: 'D1', dateStr: '1일 전', level: '하', channel: '외식오프', scope: '산지/도매시세',
+    channelLabel: '외식직거래(오프) · 유통도매',
+    tag: '#가락시장양파 #15kg18387원 #전주비4%하락',
+    title: '양파 15kg 도매 경락가 상품 18,387원… 1주 전보다 4.0% 하락하며 단기 안정세',
+    summary: '서울가락도매시장 양파(15kg 상품) 경락가는 전주 대비 4.0% 내린 18,387원 선에서 거래되며 단기 오름세가 진정되었습니다.',
+    impact: '[유통도매] 단기 경락가 조정 반영해 도매 매입가 안정화 | [외식오프] 중식당·한식당 직거래처에 15kg 망양파 및 깐양파 안정적 공급 유지'
+  },
+  {
+    day: 'D1', dateStr: '1일 전', level: '하', channel: '유통도매', scope: '산지/도매시세',
+    channelLabel: '유통도매 · 외식직거래(오프)',
+    tag: '#한돈지육5797원 #2주연속하락 #삼겹살도매',
+    title: '한돈 지육 경락가 kg당 5,797원… 전주 대비 -3.2% 내리며 2주 연속 하향 안정',
+    summary: '가을철 출하 물량 증가로 한돈 지육 도매 경락가격이 kg당 5,797원으로 내려앉으며 2주 연속 하향 안정세를 기록했습니다.',
+    impact: '[유통도매] 지육가 하락분을 반영해 국내산 삼겹·목심·전지 부분육 도매 매입원가 절감 | [외식오프] 연말 모임 성수기 앞두고 고기집 직거래처 대상 한돈 판촉 프로모션 적기'
+  },
+  {
+    day: 'D1', dateStr: '1일 전', level: '하', channel: '외식오프', scope: '산지/도매시세',
+    channelLabel: '외식직거래(오프) · 외식온라인',
+    tag: '#계란생산량증가 #특란하락세 #베이커리',
+    title: '10월 계란 생산량 전년비 0.6% 증가… 특란 30구 산지 도매시세(5,180원) 하락 안정',
+    summary: '산란계 계란 생산량이 전년 동월 대비 증가하면서 특란 30구 산지 도매가격이 1개월 전 대비 -3.4% 하락 안정 흐름을 보이고 있습니다.',
+    impact: '[외식오프] 베이커리·브런치·분식 직거래 매장의 계란 원가 부담 완화, 연말 제과 성수기 물량 사전 계약 유도 | [외식온라인] 특란 30구 판란 및 구운란·계란지단 묶음 특가 운영'
+  },
+  {
+    day: 'D2', dateStr: '2일 전', level: '하', channel: '외식오프', scope: '산지/도매시세',
+    channelLabel: '외식직거래(오프) · 외식온라인',
+    tag: '#배추도매가하락 #1개월-32% #가을배추출하',
+    title: '배추 10kg 상품 도매가 9,800원(1개월 -32.0%)으로 하락… 가을배추 출하로 원물가 안정',
+    summary: '가을배추 출하 확대와 함께 도매시장 배추 시세가 한 달 전 대비 32.0% 내려오며 뚜렷한 안정세를 보이고 있습니다.',
+    impact: '[외식오프] 국밥·칼국수·보쌈 등 배추 다량 소비 직거래 식당의 원물 매입 부담 해소 | [외식온라인] 김장철 앞두고 업소용 김치(10kg) 및 절임배추 다박스 예약 프로모션 전개'
+  },
+  {
+    day: 'D2', dateStr: '2일 전', level: '중', channel: '외식오프', scope: '산지/도매시세',
+    channelLabel: '외식직거래(오프) · 유통도매',
+    tag: '#원양오징어5392원 #흰다리새우13250원 #수산시세',
+    title: '원양 오징어 시세 전주비 -2.0% 조정(5,392원)… 흰다리새우는 13,250원(+1.9%) 강보합',
+    summary: '오징어는 원양 물량 공급으로 단기 급등세가 진정(-2.0%)된 반면, 흰다리새우는 가을 외식 수요로 13,250원(+1.9%) 강보합세를 기록했습니다.',
+    impact: '[유통도매] 환율 하락(1,323원) 구간을 활용해 수입 냉동 흰다리새우 및 원양산 할복오징어 박스 물량 확보 | [외식온라인] 주점·분식 타겟 오징어튀김·노바시새우 가공품 기획전 유지'
+  },
+  {
+    day: 'D2', dateStr: '2일 전', level: '상', channel: '외식온라인', scope: '외식/온라인트렌드',
+    channelLabel: '외식온라인 · 외식직거래(오프)',
+    tag: '#온라인식자재몰 #소분원팩 #자영업발주',
+    title: '외식 자영업자, 주방 인력난 및 재고 부담에 온라인 식자재몰 소분·세절·원팩 발주 지속 확대',
+    summary: '중소형 외식 매장에서 대용량 원물 사입 대신 익일 배송되는 온라인 식자재몰의 세절육, 깐채소 소분팩, 기성 튀김류 활용 비중을 높이고 있습니다.',
+    impact: '[외식온라인] 회전율 높은 식용유(18L)·계란(30구)·김치(10kg)를 미끼 특가로 배치하고 고마진 세절육·소분채소·소스를 교차 판매하여 객단가 극대화'
+  }
+];
+
+let newsFilters = { day: 'ALL', level: 'ALL', channel: 'ALL', scope: 'ALL' };
+
+function fmtPct(v) {
+  const cls = v > 0 ? 'up' : (v < 0 ? 'down' : '');
+  const sign = v > 0 ? '+' : '';
+  return `<span class="p-val ${cls}">${sign}${v.toFixed(1)}%</span>`;
+}
+
+function fmtNum(n) {
+  return n >= 100 ? n.toLocaleString() : n.toFixed(2);
+}
+
+function computeAutoMetrics(item) {
+  const arr = item.series;
+  const minVal = Math.min(...arr);
+  const maxVal = Math.max(...arr);
+  const avgVal = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const posPct = maxVal > minVal ? Math.round(((item.cur - minVal) / (maxVal - minVal)) * 100) : 50;
+  const vsAvgPct = (((item.cur - avgVal) / avgVal) * 100).toFixed(1);
+
+  if (item.isMacro) {
+    let risk = '보합추세';
+    let riskClass = 'b-macro';
+    if (item.chg.m1 >= 3 || item.chg.w1 >= 1.5) {
+      risk = '수요확대';
+      riskClass = 'b-macro';
+    } else if (item.chg.m1 <= -3 || item.cur < 99) {
+      risk = '수요완만';
+      riskClass = 'b-mid';
+    }
+    return { minVal, maxVal, avgVal, posPct, vsAvgPct, risk, riskClass };
+  }
+
+  let risk = '보합';
+  let riskClass = 'b-mid';
+  if (item.chg.m3 >= 10 || item.chg.y1 >= 25 || item.chg.m1 >= 10) {
+    risk = '상승주의';
+    riskClass = 'b-high';
+  } else if (item.chg.m1 <= -3 || item.chg.w1 <= -2) {
+    risk = '하락안정';
+    riskClass = 'b-low';
+  }
+  return { minVal, maxVal, avgVal, posPct, vsAvgPct, risk, riskClass };
+}
+
+function renderDynamicRiskBar() {
+  const all = [...rawItems, ...freshItems];
+  const rising = [...all].sort((a, b) => b.chg.y1 - a.chg.y1).slice(0, 3);
+  const falling = [...all].sort((a, b) => a.chg.m1 - b.chg.m1).slice(0, 2);
+  const fx = rawItems.find(x => x.id === 'fx_krw');
+
+  const risingStr = rising.map(i => `${i.name.split(' ')[0]} (1년 ${i.chg.y1 > 0 ? '+' : ''}${i.chg.y1}%)`).join(', ');
+  const fallingStr = falling.map(i => `${i.name.split(' ')[0]} (1개월 ${i.chg.m1 > 0 ? '+' : ''}${i.chg.m1}%)`).join(', ');
+
+  document.getElementById('dynamic-risk-bar').innerHTML = `
+    <div>
+      <span class="risk-highlight">연간 상승 상위:</span> ${risingStr}
+      &nbsp;|&nbsp;
+      <span class="risk-highlight">단기 조정 품목:</span> ${fallingStr}
+    </div>
+    <div>
+      <span class="risk-highlight">원/달러 환율:</span> <span>${fmtNum(fx.cur)}원</span>
+      <span class="${fx.chg.m1 >= 0 ? 'up' : 'down'}">(1개월 ${fx.chg.m1 > 0 ? '+' : ''}${fx.chg.m1}% · 1년 ${fx.chg.y1 > 0 ? '+' : ''}${fx.chg.y1}%)</span>
+    </div>
+  `;
+}
+
+function buildSparkSVG(item, w=420, h=132, isModal=false) {
+  const arr = item.series;
+  const minVal = Math.min(...arr);
+  const maxVal = Math.max(...arr);
+  const minIdx = arr.indexOf(minVal);
+  const maxIdx = arr.indexOf(maxVal);
+  const curIdx = arr.length - 1;
+
+  const padL = 32, padR = 58, padT = 24, padB = 26;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  const pts = arr.map((v, i) => {
+    const x = padL + (i / (arr.length - 1)) * plotW;
+    const y = padT + (1 - (v - minVal) / (maxVal - minVal || 1)) * plotH;
+    return { x, y, v, d: item.dates[i], idx: i };
+  });
+
+  const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const pMax = pts[maxIdx];
+  const pMin = pts[minIdx];
+  const pCur = pts[curIdx];
+  const strokeColor = item.isMacro ? '#38bdf8' : (item.chg.m3 >= 0 ? '#f87171' : '#60a5fa');
+
+  const xTicks = [
+    { idx: 0, label: '52주전' },
+    { idx: 6, label: '6개월' },
+    { idx: 9, label: '3개월' },
+    { idx: 10, label: '1개월' },
+    { idx: 11, label: '현재' }
+  ];
+
+  const tickFontSize = isModal ? 11.5 : 10;
+  const labelFontSize = isModal ? 12 : 10.5;
+
+  const gridLines = xTicks.map(t => {
+    const px = pts[t.idx].x.toFixed(1);
+    let textX = pts[t.idx].x;
+    if (!isModal && t.idx === 10) textX -= 6;
+    if (!isModal && t.idx === 11) textX += 6;
+    return `
+      <line x1="${px}" y1="${padT}" x2="${px}" y2="${h - padB}" stroke="#334155" stroke-width="0.9" stroke-dasharray="3,3" />
+      <text x="${textX.toFixed(1)}" y="${h - 6}" fill="#94a3b8" font-size="${tickFontSize}" font-weight="400" text-anchor="middle">${t.label}</text>
+    `;
+  }).join('');
+
+  let curLabelY = pCur.y + 4;
+  if (maxIdx === curIdx) curLabelY = pCur.y + 15;
+  if (minIdx === curIdx) curLabelY = pCur.y - 9;
+
+  return `
+  <svg viewBox="0 0 ${w} ${h}" width="100%" height="100%">
+    <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#475569" stroke-width="1" />
+    ${gridLines}
+    <polyline fill="none" stroke="${strokeColor}" stroke-width="2.2" points="${poly}" />
+    
+    <!-- 고점 -->
+    <circle cx="${pMax.x}" cy="${pMax.y}" r="4" fill="#ef4444" stroke="#fff" stroke-width="1.2"/>
+    <text x="${Math.min(Math.max(pMax.x, 52), w - padR - 20)}" y="${Math.max(pMax.y - 8, 13)}" fill="#fca5a5" font-size="${labelFontSize}" font-weight="500" text-anchor="middle">고점 ${fmtNum(pMax.v)}</text>
+    
+    <!-- 저점 -->
+    <circle cx="${pMin.x}" cy="${pMin.y}" r="4" fill="#3b82f6" stroke="#fff" stroke-width="1.2"/>
+    <text x="${Math.min(Math.max(pMin.x, 52), w - padR - 20)}" y="${Math.min(pMin.y + 15, h - padB - 4)}" fill="#93c5fd" font-size="${labelFontSize}" font-weight="500" text-anchor="middle">저점 ${fmtNum(pMin.v)}</text>
+
+    <!-- 현재 실적 -->
+    <circle cx="${pCur.x}" cy="${pCur.y}" r="4.8" fill="#f97316" stroke="#fff" stroke-width="1.5"/>
+    <text x="${pCur.x + 8}" y="${curLabelY}" fill="#fde047" font-size="${labelFontSize}" font-weight="600" text-anchor="start">${fmtNum(pCur.v)}</text>
+  </svg>`;
+}
+
+function renderCard(item) {
+  const m = computeAutoMetrics(item);
+  const newsHtml = item.itemNews.map(n => {
+    const dotIcon = n.lv === 'high' ? '🔴' : (n.lv === 'mid' ? '🟡' : '🟢');
+    return `<div class="card-news-item"><span class="dot">${dotIcon}</span><span>${n.title}</span></div>`;
+  }).join('');
+
+  const vsSign = m.vsAvgPct > 0 ? '+' : '';
+  const unitSuffix = item.isMacro ? ' pt' : '';
+
+  return `
+  <div class="card" onclick="openDetail('${item.id}')">
+    <div>
+      <div class="card-top">
+        <div>
+          <div class="item-name">${item.name}</div>
+          <div class="item-sub">${item.unit}</div>
+        </div>
+        <span class="badge ${m.riskClass}">${m.risk}</span>
+      </div>
+      <div class="price-row">
+        <div class="price-main">${fmtNum(item.cur)}${unitSuffix}</div>
+        <div class="price-link">상세 추이 ↗</div>
+      </div>
+      <div class="auto-stat-bar">
+        <span>52주 평균: <span class="stat-val">${fmtNum(m.avgVal)}</span> (${vsSign}${m.vsAvgPct}%)</span>
+        <span>연중 위치: <span class="stat-val">저점 대비 ${m.posPct}%</span></span>
+      </div>
+      <div class="period-strip">
+        <div class="p-cell"><span class="p-lbl">1주</span>${fmtPct(item.chg.w1)}</div>
+        <div class="p-cell"><span class="p-lbl">1개월</span>${fmtPct(item.chg.m1)}</div>
+        <div class="p-cell"><span class="p-lbl">3개월</span>${fmtPct(item.chg.m3)}</div>
+        <div class="p-cell"><span class="p-lbl">6개월</span>${fmtPct(item.chg.m6)}</div>
+        <div class="p-cell"><span class="p-lbl">1년</span>${fmtPct(item.chg.y1)}</div>
+      </div>
+      <div class="svg-wrap">${buildSparkSVG(item, 420, 132, false)}</div>
+    </div>
+    <div class="card-news-box">
+      <div class="card-news-header">
+        <span>관련 주요 이슈</span>
+      </div>
+      ${newsHtml}
+    </div>
+  </div>`;
+}
+
+function renderBroadNews() {
+  const filtered = broadNewsData.filter(n => {
+    const matchDay = newsFilters.day === 'ALL' || n.day === newsFilters.day;
+    const matchLevel = newsFilters.level === 'ALL' || n.level === newsFilters.level;
+    const matchChannel = newsFilters.channel === 'ALL' || n.channel === newsFilters.channel || n.channelLabel.includes(newsFilters.channel === '외식오프' ? '외식직거래(오프)' : (newsFilters.channel === '외식온라인' ? '외식온라인' : '유통도매'));
+    const matchScope = newsFilters.scope === 'ALL' || n.scope === newsFilters.scope;
+    return matchDay && matchLevel && matchChannel && matchScope;
+  });
+
+  document.getElementById('news-count-label').innerText = `${filtered.length}건`;
+
+  document.getElementById('news-list').innerHTML = filtered.map(n => {
+    const lvBadge = n.level === '상' ? '<span class="badge b-high">영향도 상</span>' :
+                    (n.level === '중' ? '<span class="badge b-mid">영향도 중</span>' : '<span class="badge b-low">영향도 하</span>');
+    return `
+      <div class="news-card">
+        <div class="news-meta">
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            ${lvBadge}
+            <span class="news-biz-badge">${n.channelLabel}</span>
+            <span class="news-cat-badge">${n.scope}</span>
+            <span class="news-date-badge">${n.dateStr}</span>
+          </div>
+          <span style="color:#f97316; font-size:12.5px;">${n.tag}</span>
+        </div>
+        <div class="news-title">${n.title}</div>
+        <div class="news-summary">${n.summary}</div>
+        <div class="news-impact-box"><span class="impact-label">대응 포인트</span> ${n.impact}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function setNewsFilter(type, val, el) {
+  newsFilters[type] = val;
+  const parentMap = { day: 'day-tabs', level: 'level-tabs', channel: 'channel-tabs', scope: 'scope-tabs' };
+  Array.from(document.getElementById(parentMap[type]).children).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderBroadNews();
+}
+
+function renderAll(catFilter='all') {
+  renderDynamicRiskBar();
+  document.getElementById('macro-grid').innerHTML = macroItems.map(renderCard).join('');
+  document.getElementById('raw-grid').innerHTML = rawItems.map(renderCard).join('');
+  const filtered = catFilter === 'all' ? freshItems : freshItems.filter(i => i.cat === catFilter);
+  document.getElementById('fresh-grid').innerHTML = filtered.map(renderCard).join('');
+  renderBroadNews();
+}
+
+function filterCat(c) {
+  ['all','agri','meat','sea'].forEach(k => document.getElementById('tab-'+k).classList.remove('active'));
+  if(c==='all') document.getElementById('tab-all').classList.add('active');
+  if(c==='농산') document.getElementById('tab-agri').classList.add('active');
+  if(c==='축산') document.getElementById('tab-meat').classList.add('active');
+  if(c==='수산') document.getElementById('tab-sea').classList.add('active');
+  renderAll(c);
+}
+
+function openDetail(id) {
+  const item = [...macroItems, ...rawItems, ...freshItems].find(x => x.id === id);
+  const m = computeAutoMetrics(item);
+  const arr = item.series;
+  const minIdx = arr.indexOf(m.minVal), maxIdx = arr.indexOf(m.maxVal);
+  const fromHigh = (((item.cur - m.maxVal) / m.maxVal) * 100).toFixed(1);
+  const fromLow = (((item.cur - m.minVal) / m.minVal) * 100).toFixed(1);
+
+  const modalNewsHtml = item.itemNews.map(n => {
+    const icon = n.lv === 'high' ? '🔴 [상]' : (n.lv === 'mid' ? '🟡 [중]' : '🟢 [하]');
+    return `
+      <div style="padding:12px 14px; background:#172033; border-radius:8px; border:1px solid #334155; margin-top:8px;">
+        <div style="font-weight:600; font-size:14.5px; color:#f8fafc;">${icon} ${n.title}</div>
+        <div style="font-size:13.5px; color:#cbd5e1; margin-top:4px;">➔ ${n.impact}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <h2 style="font-size:20px; font-weight:600;">${item.name} 상세 추이 및 대응 전략</h2>
+        <div style="font-size:13.5px; color:var(--text-muted); margin-top:3px;">데이터 소스: ${item.unit}</div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="period-strip" style="padding:10px; margin-bottom:14px;">
+      <div class="p-cell"><span class="p-lbl">1주 대비</span>${fmtPct(item.chg.w1)}</div>
+      <div class="p-cell"><span class="p-lbl">1개월 대비</span>${fmtPct(item.chg.m1)}</div>
+      <div class="p-cell"><span class="p-lbl">3개월 대비</span>${fmtPct(item.chg.m3)}</div>
+      <div class="p-cell"><span class="p-lbl">6개월 대비</span>${fmtPct(item.chg.m6)}</div>
+      <div class="p-cell"><span class="p-lbl">1년 대비</span>${fmtPct(item.chg.y1)}</div>
+    </div>
+    <div style="display:flex; gap:12px; margin-bottom:14px; font-size:14px; flex-wrap:wrap;">
+      <div style="flex:1; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155;">
+        <span style="color:var(--text-muted);">52주 최고점:</span> <span style="color:#f8fafc; font-weight:600;">${fmtNum(m.maxVal)}</span> (${item.dates[maxIdx]})
+        <div style="font-size:12.5px; color:#fca5a5; margin-top:3px;">고점 대비 ${fromHigh}%</div>
+      </div>
+      <div style="flex:1; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155;">
+        <span style="color:var(--text-muted);">52주 최저점:</span> <span style="color:#f8fafc; font-weight:600;">${fmtNum(m.minVal)}</span> (${item.dates[minIdx]})
+        <div style="font-size:12.5px; color:#93c5fd; margin-top:3px;">저점 대비 +${fromLow}%</div>
+      </div>
+      <div style="flex:1; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155;">
+        <span style="color:var(--text-muted);">52주 평균:</span> <span style="color:#fde047; font-weight:600;">${fmtNum(m.avgVal)}</span>
+        <div style="font-size:12.5px; color:var(--text-sub); margin-top:3px;">평균 대비 ${m.vsAvgPct > 0 ? '+' : ''}${m.vsAvgPct}% (연중 위치 ${m.posPct}%)</div>
+      </div>
+    </div>
+    <div style="background:#0f172a; padding:16px; border-radius:10px; height:230px; border:1px solid #334155;">
+      ${buildSparkSVG(item, 760, 195, true)}
+    </div>
+    <div class="info-box">
+      <p style="margin-bottom:8px;"><span style="color:#f8fafc; font-weight:600;">지표 해석 및 시차 구조:</span> ${item.lagInfo}</p>
+      <p style="color:#fde68a;"><span style="color:#fdba74; font-weight:600;">채널별 대응 가이드:</span> ${item.action}</p>
+    </div>
+    <div class="info-box">
+      <div style="font-weight:600; margin-bottom:6px; color:#f8fafc;">관련 주요 뉴스</div>
+      ${modalNewsHtml}
+    </div>
+  `;
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function openApiConfigModal() {
+  const savedEcosKey = localStorage.getItem('CJFW_ECOS_KEY') || '';
+  const savedKamisId = localStorage.getItem('CJFW_KAMIS_ID') || '';
+  const savedKamisKey = localStorage.getItem('CJFW_KAMIS_KEY') || '';
+  const savedGeminiKey = localStorage.getItem('CJFW_GEMINI_KEY') || '';
+  const savedJsonUrl = localStorage.getItem('CJFW_JSON_URL') || './dashboard_live_data.json';
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <h2 style="font-size:19px; font-weight:600;">데이터 자동 연동 설정 (카드 등록 없는 100% 무료 공공/글로벌 API)</h2>
+        <div style="font-size:13.5px; color:var(--text-muted); margin-top:2px;">네이버는 카드 등록 이슈로 전면 제외하고 한국은행·KAMIS·구글(무료)로 완전 전환되었습니다.</div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="info-box">
+      <label style="font-size:13.5px; color:#f8fafc;">1. 한국은행 ECOS API Key (무료 즉시발급 · 외식 거시경기 및 심리지수)</label>
+      <input type="password" id="cfg-ecos-key" class="input-field" placeholder="한국은행 ECOS 인증키" value="${savedEcosKey}">
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:13.5px; color:#f8fafc;">2. KAMIS Cert ID (농축수산 도매가)</label>
+          <input type="text" id="cfg-kamis-id" class="input-field" placeholder="KAMIS 아이디" value="${savedKamisId}">
+        </div>
+        <div>
+          <label style="font-size:13.5px; color:#f8fafc;">KAMIS Cert Key</label>
+          <input type="password" id="cfg-kamis-key" class="input-field" placeholder="KAMIS 인증키" value="${savedKamisKey}">
+        </div>
+      </div>
+
+      <label style="font-size:13.5px; color:#f8fafc;">3. Gemini API Key (Google AI Studio 무료키 · 카드등록 불필요)</label>
+      <input type="password" id="cfg-gemini-key" class="input-field" placeholder="AIzaSy..." value="${savedGeminiKey}">
+
+      <label style="font-size:13.5px; color:#f8fafc;">4. 자동 생성 JSON 파일 경로 (update_dashboard_data_v3.py 실행 결과물)</label>
+      <input type="text" id="cfg-json-url" class="input-field" value="${savedJsonUrl}">
+
+      <div style="display:flex; gap:10px; margin-top:8px;">
+        <button class="btn active" onclick="saveApiConfig()">저장 및 동기화</button>
+        <button class="btn" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function saveApiConfig() {
+  localStorage.setItem('CJFW_ECOS_KEY', document.getElementById('cfg-ecos-key').value.trim());
+  localStorage.setItem('CJFW_KAMIS_ID', document.getElementById('cfg-kamis-id').value.trim());
+  localStorage.setItem('CJFW_KAMIS_KEY', document.getElementById('cfg-kamis-key').value.trim());
+  localStorage.setItem('CJFW_GEMINI_KEY', document.getElementById('cfg-gemini-key').value.trim());
+  localStorage.setItem('CJFW_JSON_URL', document.getElementById('cfg-json-url').value.trim());
+  closeModal();
+  runLiveAutoSync();
+}
+
+function closeModal() {
+  document.getElementById('detailModal').style.display = 'none';
+}
+
+async function runLiveAutoSync() {
+  const pill = document.getElementById('sync-status-pill');
+  pill.innerText = '동기화 중...';
+  const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+  try {
+    const jsonUrl = localStorage.getItem('CJFW_JSON_URL') || './dashboard_live_data.json';
+    const res = await fetch(jsonUrl + '?t=' + Date.now());
+    if (res.ok) {
+      const liveData = await res.json();
+      if (liveData.macroItems) macroItems.splice(0, macroItems.length, ...liveData.macroItems);
+      if (liveData.rawItems) rawItems.splice(0, rawItems.length, ...liveData.rawItems);
+      if (liveData.freshItems) freshItems.splice(0, freshItems.length, ...liveData.freshItems);
+      if (liveData.broadNewsData) broadNewsData.splice(0, broadNewsData.length, ...liveData.broadNewsData);
+      renderAll('all');
+      pill.innerText = `🟢 자동 연동 완료 (${nowStr})`;
+      return;
+    }
+  } catch (e) {}
+
+  try {
+    const fxRes = await fetch('https://open.er-api.com/v6/latest/USD');
+    if (fxRes.ok) {
+      const fxJson = await fxRes.json();
+      if (fxJson && fxJson.rates && fxJson.rates.KRW) {
+        const liveKrw = parseFloat(fxJson.rates.KRW.toFixed(1));
+        const fxItem = rawItems.find(x => x.id === 'fx_krw');
+        if (fxItem) {
+          fxItem.cur = liveKrw;
+          fxItem.series[fxItem.series.length - 1] = liveKrw;
+        }
+      }
+    }
+  } catch (e) {}
+
+  renderAll('all');
+  pill.innerText = `🟢 자동 연동 완료 (${nowStr})`;
+}
+
+window.onload = () => {
+  renderAll('all');
+  runLiveAutoSync();
+};
+</script>
+</body>
+</html>
