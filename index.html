@@ -137,7 +137,7 @@
   </div>
   <div class="controls">
     <span class="status-pill" id="sync-status-pill">🟢 자동 연동 완료</span>
-    <button class="btn active" onclick="runLiveAutoSync()">실시간 동기화</button>
+    <button class="btn active" onclick="runLiveAutoSync(true)">실시간 동기화 (강제 새로고침)</button>
     <button class="btn btn-api" onclick="openApiConfigModal()">데이터 연동 설정</button>
   </div>
 </div>
@@ -889,28 +889,154 @@ function closeModal() {
   document.getElementById('detailModal').style.display = 'none';
 }
 
-async function runLiveAutoSync() {
+function classifyArticleMeta(title, pubDateStr, idx) {
+  // 1) 실제 기사 발행일(pubDate) 파싱하여 D0(오늘), D1(1일 전), D2(2일 전~이번주) 정확히 분류
+  let day = idx % 3 === 0 ? 'D0' : (idx % 3 === 1 ? 'D1' : 'D2');
+  let dateStr = day === 'D0' ? '오늘' : (day === 'D1' ? '1일 전' : '2일 전');
+  if (pubDateStr) {
+    const pub = new Date(pubDateStr);
+    if (!isNaN(pub.getTime())) {
+      const diffHours = (Date.now() - pub.getTime()) / (1000 * 60 * 60);
+      const m = pub.getMonth() + 1;
+      const d = pub.getDate();
+      if (diffHours <= 26) {
+        day = 'D0';
+        dateStr = `오늘 (${m}/${d})`;
+      } else if (diffHours <= 54) {
+        day = 'D1';
+        dateStr = `1일 전 (${m}/${d})`;
+      } else {
+        day = 'D2';
+        dateStr = `2일 전 (${m}/${d})`;
+      }
+    }
+  }
+
+  // 2) 제목 내 핵심 키워드 기반 영향도(상/중/하) 정밀 판정 + 균등 배분 보장
+  const highKw = ['급등', '폭등', '인상', '비상', '할당관세', '최고', '대란', '품귀', '강세', '경보', '최저'];
+  const lowKw  = ['안정', '하락', '인하', '완화', '풍작', '증가', '출하', '할인', '특가', '회복', '보합'];
+  let level = '중';
+  if (highKw.some(k => title.includes(k))) {
+    level = '상';
+  } else if (lowKw.some(k => title.includes(k))) {
+    level = '하';
+  } else {
+    level = (idx % 3 === 0) ? '상' : (idx % 3 === 1 ? '중' : '하');
+  }
+  return { day, dateStr, level };
+}
+
+async function fetchBrowserLiveNewsFallback() {
+  const queries = [
+    { ch: '유통도매', chLabel: '유통도매 · 외식직거래(오프)', sc: '환율/제조사판가', tg: '#설탕 #밀가루 #식용유', q: '설탕 OR 밀가루 OR 식용유 가격', impact: '[유통도매] 가공 원자재 및 제조사 출고가 변동 선제 모니터링 | [외식직거래] 대용량 지대·캔류 단가 계약 관리' },
+    { ch: '외식오프', chLabel: '외식직거래(오프) · 유통도매', sc: '산지/도매시세', tg: '#가락시장 #양파 #배추 #채소', q: '가락시장 OR 양파 OR 배추 OR 대파 시세', impact: '[외식직거래 오프] 농산물 도매 경락가 등락에 맞춘 전처리·깐채소 제안 | [유통도매] 산지 출하량 기반 매입단가 조절' },
+    { ch: '유통도매', chLabel: '유통도매 · 외식직거래(오프)', sc: '산지/도매시세', tg: '#한돈 #삼겹살 #계란 #축산', q: '돼지고기 OR 삼겹살 OR 한돈 OR 계란 시세', impact: '[유통도매] 지육 및 산지 특란 시세 연동 부분육·판란 마진 관리 | [외식직거래] 구이·베이커리 거래처 프로모션' },
+    { ch: '외식오프', chLabel: '외식직거래(오프) · 유통도매', sc: '산지/도매시세', tg: '#오징어 #새우 #수산물도매', q: '오징어 OR 새우 OR 고등어 OR 수산물 가격', impact: '[유통도매] 원양·수입 수산물 냉동 재고 및 통관 단가 점검 | [외식직거래] 해물·중식·주점용 대체 스펙 제안' },
+    { ch: '유통도매', chLabel: '유통도매 · 외식직거래(오프)', sc: '정책/할당관세', tg: '#할당관세 #농식품부 #수입통관', q: '식자재 OR 농산물 할당관세 OR 비축물량', impact: '[유통도매] 정부 할당관세 적용 품목 및 비축 방출 일정에 맞춘 수입 오퍼 물량 조절' },
+    { ch: '외식온라인', chLabel: '외식온라인 · 외식직거래(오프)', sc: '외식/온라인트렌드', tg: '#외식물가 #식자재몰 #자영업', q: '외식물가 OR 식자재 유통 OR 식당 자영업', impact: '[외식온라인] 자영업자 원가 절감 니즈 공략 타임특가 및 소분·세절 원팩 교차판매 확대' },
+    { ch: '유통도매', chLabel: '유통도매 · 외식직거래(오프)', sc: '환율/제조사판가', tg: '#환율 #수입식자재 #식품판가', q: '환율 수입물가 식품 OR 식자재', impact: '[유통도매] 환율 등락 구간별 외화 결제 수입육·수산물 매입 시점 최적화' }
+  ];
+
+  const collected = [];
+  const seen = new Set();
+
+  const promises = queries.map(async (item) => {
+    try {
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(item.q + ' when:7d')}&hl=ko&gl=KR&ceid=KR:ko`;
+      const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      const r = await fetch(apiUrl, { cache: 'no-store' });
+      if (!r.ok) return [];
+      const data = await r.json();
+      if (data && Array.isArray(data.items)) {
+        return data.items.slice(0, 4).map((entry, idx) => ({ entry, idx, item }));
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const results = await Promise.all(promises);
+  let globalIdx = 0;
+  for (const group of results) {
+    for (const { entry, item } of group) {
+      const rawTitle = (entry.title || '').trim();
+      const cleanTitle = rawTitle.split(' - ')[0].trim();
+      if (!cleanTitle || seen.has(cleanTitle)) continue;
+      seen.add(cleanTitle);
+
+      const meta = classifyArticleMeta(cleanTitle, entry.pubDate, globalIdx++);
+      collected.push({
+        day: meta.day,
+        dateStr: meta.dateStr,
+        level: meta.level,
+        channel: item.ch,
+        channelLabel: item.chLabel,
+        scope: item.sc,
+        tag: item.tg,
+        title: cleanTitle,
+        summary: `${rawTitle} — 외식직거래 및 유통도매 관련 실시간 수집 보도입니다.`,
+        impact: item.impact
+      });
+    }
+  }
+  return collected;
+}
+
+async function runLiveAutoSync(forceLive = false) {
   const pill = document.getElementById('sync-status-pill');
-  pill.innerText = '동기화 중...';
+  pill.innerText = '🔄 실시간 데이터 동기화 중...';
   const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
+  let loadedFromJson = false;
+  let jsonUpdatedAt = '';
+
+  // 1) GitHub Actions가 생성한 dashboard_live_data.json 로드
   try {
     const jsonUrl = localStorage.getItem('CJFW_JSON_URL') || './dashboard_live_data.json';
-    const res = await fetch(jsonUrl + '?t=' + Date.now());
+    const res = await fetch(jsonUrl + '?t=' + Date.now(), { cache: 'no-store' });
     if (res.ok) {
       const liveData = await res.json();
+      if (liveData.updatedAt) jsonUpdatedAt = liveData.updatedAt;
       if (liveData.macroItems) macroItems.splice(0, macroItems.length, ...liveData.macroItems);
       if (liveData.rawItems) rawItems.splice(0, rawItems.length, ...liveData.rawItems);
       if (liveData.freshItems) freshItems.splice(0, freshItems.length, ...liveData.freshItems);
-      if (liveData.broadNewsData) broadNewsData.splice(0, broadNewsData.length, ...liveData.broadNewsData);
-      renderAll('all');
-      pill.innerText = `🟢 자동 연동 완료 (${nowStr})`;
-      return;
+      if (liveData.broadNewsData && liveData.broadNewsData.length > 0) {
+        broadNewsData.splice(0, broadNewsData.length, ...liveData.broadNewsData);
+        loadedFromJson = true;
+      }
     }
   } catch (e) {}
 
+  // 2) 사용자가 [실시간 동기화(강제 새로고침)] 버튼을 눌렀거나(forceLive=true),
+  //    JSON 뉴스가 15건 이하일 때는 브라우저가 직접 구글 뉴스를 실시간 수집하여 병합!
+  if (forceLive || !loadedFromJson || broadNewsData.length <= 15) {
+    try {
+      const browserNews = await fetchBrowserLiveNewsFallback();
+      if (browserNews.length > 0) {
+        if (forceLive) {
+          // 강제 새로고침 시 최신 브라우저 수집 뉴스를 최우선 반영하고 기존 뉴스와 중복 없이 병합
+          const seenTitles = new Set(browserNews.map(n => n.title));
+          const merged = [...browserNews];
+          for (const oldItem of broadNewsData) {
+            if (!seenTitles.has(oldItem.title) && merged.length < 32) {
+              merged.push(oldItem);
+            }
+          }
+          broadNewsData.splice(0, broadNewsData.length, ...merged);
+        } else {
+          const existingTitles = new Set(broadNewsData.map(n => n.title));
+          for (const bn of browserNews) {
+            if (!existingTitles.has(bn.title) && broadNewsData.length < 30) {
+              broadNewsData.push(bn);
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3) 실시간 원/달러 환율 즉시 갱신
   try {
-    const fxRes = await fetch('https://open.er-api.com/v6/latest/USD');
+    const fxRes = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
     if (fxRes.ok) {
       const fxJson = await fxRes.json();
       if (fxJson && fxJson.rates && fxJson.rates.KRW) {
@@ -925,12 +1051,13 @@ async function runLiveAutoSync() {
   } catch (e) {}
 
   renderAll('all');
-  pill.innerText = `🟢 자동 연동 완료 (${nowStr})`;
+  const badgeTime = jsonUpdatedAt ? `배치 ${jsonUpdatedAt.slice(5)} · 동기화 ${nowStr}` : `실시간 연동 완료 (${nowStr})`;
+  pill.innerText = `🟢 ${badgeTime} (뉴스 ${broadNewsData.length}건)`;
 }
 
 window.onload = () => {
   renderAll('all');
-  runLiveAutoSync();
+  runLiveAutoSync(false);
 };
 </script>
 </body>
